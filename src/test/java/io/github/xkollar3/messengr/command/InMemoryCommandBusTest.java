@@ -1,10 +1,8 @@
-package io.github.xkollar3.messengr;
+package io.github.xkollar3.messengr.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
-
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.xkollar3.messengr.exception.CommandHandlerNotFound;
@@ -29,10 +27,10 @@ public class InMemoryCommandBusTest {
         () -> new CommandHandlerNotFound(cmd.getClass()).getMessage());
   }
 
-  private record TestCommand(String payload) {
+  private record TestCommand(String payload) implements Command.Payload {
   }
 
-  private class TestCommandHandler implements CommandHandler<TestCommand, String> {
+  private class TestCommandHandler implements Command.Handler<TestCommand, String> {
 
     @Override
     public Class<TestCommand> commandType() {

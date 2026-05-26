@@ -12,4 +12,9 @@ public interface Command {
   public interface Payload {
 
   }
+
+  public interface Interceptor {
+
+    <C extends Payload> C intercept(C command);
+  }
 }

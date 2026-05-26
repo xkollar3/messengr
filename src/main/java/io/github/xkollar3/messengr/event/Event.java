@@ -4,9 +4,10 @@ public interface Event {
 
   public interface Handler<E extends Payload> {
 
-    public Class<E> eventType();
+    Class<E> eventType();
 
-    public void handle(E event);
+    void handle(E event);
+
   }
 
   public interface Payload {

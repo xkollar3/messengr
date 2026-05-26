@@ -13,7 +13,18 @@ public class InMemoryEventBus implements EventBus {
   private final Map<Class<? extends Event.Payload>, Set<Event.Handler<?>>> handlers;
 
   public InMemoryEventBus(List<Event.Handler<?>> handlers) {
-    this.handlers = handlers.stream().collect(Collectors.groupingBy(Event.Handler::eventType, Collectors.toSet()));
+    var wildcardHandlers = handlers.stream()
+        .filter(handler -> handler.eventType() == null)
+        .collect(Collectors.toSet());
+
+    this.handlers = handlers.stream()
+        .filter(handler -> handler.eventType() != null)
+        .collect(
+            Collectors.groupingBy(handler -> handler.eventType(), Collectors.toSet()));
+
+    if (!wildcardHandlers.isEmpty()) {
+      this.handlers.forEach((_, evtHandlers) -> evtHandlers.addAll(wildcardHandlers));
+    }
   }
 
   @Override

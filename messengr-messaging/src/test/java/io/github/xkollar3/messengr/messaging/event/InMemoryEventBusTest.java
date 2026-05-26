@@ -68,6 +68,23 @@ public class InMemoryEventBusTest {
     assertEquals(1, counter.get());
   }
 
+  @Test
+  void publishEvent_wildcardHandlerRegistered_wildcardAndTypedHandlersCalled() {
+    var wildcardCounter = new AtomicInteger(0);
+    var typedCounter = new AtomicInteger(0);
+    var latch = new CountDownLatch(2);
+
+    EventBus bus = new InMemoryEventBus(List.of(
+        new WildcardEventHandler(wildcardCounter, latch),
+        new CountingEventHandler(typedCounter, latch)));
+
+    bus.publish(new TestEvent("Hello world"));
+
+    assertTrue(await(latch));
+    assertEquals(1, wildcardCounter.get());
+    assertEquals(1, typedCounter.get());
+  }
+
   private record TestEvent(String payload) implements Event.Payload {
   }
 
@@ -135,6 +152,28 @@ public class InMemoryEventBusTest {
     public void handle(TestEvent event) {
       latch.countDown();
       throw new RuntimeException("Handler failed");
+    }
+  }
+
+  private static class WildcardEventHandler implements Event.Handler<Event.Payload> {
+
+    private final AtomicInteger counter;
+    private final CountDownLatch latch;
+
+    private WildcardEventHandler(AtomicInteger counter, CountDownLatch latch) {
+      this.counter = counter;
+      this.latch = latch;
+    }
+
+    @Override
+    public Class<Event.Payload> eventType() {
+      return null;
+    }
+
+    @Override
+    public void handle(Event.Payload event) {
+      counter.incrementAndGet();
+      latch.countDown();
     }
   }
 

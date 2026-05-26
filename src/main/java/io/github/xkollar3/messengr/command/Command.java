@@ -6,7 +6,7 @@ public interface Command {
 
     Class<C> commandType();
 
-    R handle(C command);
+    R execute(C command);
   }
 
   public interface Payload {

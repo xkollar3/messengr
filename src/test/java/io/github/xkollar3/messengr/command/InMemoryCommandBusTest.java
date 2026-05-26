@@ -2,12 +2,30 @@ package io.github.xkollar3.messengr.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-import io.github.xkollar3.messengr.exception.CommandHandlerNotFound;
-
 public class InMemoryCommandBusTest {
+
+  @Test
+  void commandBusConstruction_validCommandBus_busConstructed() {
+    var handler = new TestCommandHandler();
+
+    new InMemoryCommandBus(List.of(handler));
+
+    assertTrue(true);
+  }
+
+  @Test
+  void commandBusConstruction_duplicateHandlersForTestCommand_busCannotBeConstructed() {
+    var handler1 = new TestCommandHandler();
+    var handler2 = new TestCommandHandler();
+
+    assertThrowsExactly(MultipleHandlersForCommand.class, () -> new InMemoryCommandBus(List.of(handler1, handler2)),
+        () -> new MultipleHandlersForCommand(TestCommand.class, List.of(handler1, handler2)).getMessage());
+  }
 
   @Test
   void invokeCommand_handlerFound_invocationSuccessful() {
@@ -38,7 +56,7 @@ public class InMemoryCommandBusTest {
     }
 
     @Override
-    public String handle(TestCommand command) {
+    public String execute(TestCommand command) {
       return command.payload();
     }
   }

@@ -1,4 +1,4 @@
-package io.github.xkollar3.messengr.command;
+package io.github.xkollar3.messengr.messaging.command;
 
 public class CommandHandlerNotFound extends RuntimeException {
 

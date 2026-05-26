@@ -1,4 +1,4 @@
-package io.github.xkollar3.messengr.command;
+package io.github.xkollar3.messengr.messaging.command;
 
 import java.util.List;
 import java.util.stream.Collectors;

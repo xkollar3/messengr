@@ -1,4 +1,4 @@
-package io.github.xkollar3.messengr.event;
+package io.github.xkollar3.messengr.messaging.event;
 
 public interface EventBus {
 

@@ -1,4 +1,4 @@
-package io.github.xkollar3.messengr.command;
+package io.github.xkollar3.messengr.messaging.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-import io.github.xkollar3.messengr.command.Command.Payload;
+import io.github.xkollar3.messengr.messaging.command.Command.Payload;
 
 public class InMemoryCommandBusTest {
 

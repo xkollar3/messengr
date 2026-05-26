@@ -1,4 +1,4 @@
-package io.github.xkollar3.messengr.event;
+package io.github.xkollar3.messengr.messaging.event;
 
 import java.util.List;
 import java.util.Map;
@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import io.github.xkollar3.messengr.event.Event.Payload;
+import io.github.xkollar3.messengr.messaging.event.Event.Payload;
 
 public class InMemoryEventBus implements EventBus {
 

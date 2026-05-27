@@ -1,10 +1,14 @@
 package io.github.xkollar3.messengr.messaging.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.xkollar3.messengr.messaging.command.Command.Payload;
@@ -32,38 +36,46 @@ public class InMemoryCommandBusTest {
 
   @Test
   void invokeCommand_handlerFound_invocationSuccessful() {
-    CommandBus bus = new InMemoryCommandBus(List.of(new TestCommandHandler()), List.of());
+    var handler = new TestCommandHandler();
+    CommandBus bus = new InMemoryCommandBus(List.of(handler), List.of());
+    var commandId = UUID.randomUUID();
 
-    String result = bus.invoke(new TestCommand("Hello world"));
+    String result = bus.invoke(new TestCommand(commandId, "Hello world"));
 
     assertEquals("Hello world", result);
+    assertEquals(commandId, handler.executedCommandId().get());
   }
 
   @Test
   void invokeCommand_noHandler_invocationFailed() {
     CommandBus emptyBus = new InMemoryCommandBus(List.of(), List.of());
 
-    var cmd = new TestCommand("Hello world");
+    var cmd = new TestCommand(UUID.randomUUID(), "Hello world");
     assertThrowsExactly(CommandHandlerNotFound.class, () -> emptyBus.invoke(cmd),
         () -> new CommandHandlerNotFound(cmd.getClass()).getMessage());
   }
 
   @Test
   void invokeCommand_interceptorInterruptsCommand_handlerIsNotCalled() {
-    CommandBus bus = new InMemoryCommandBus(List.of(new TestCommandHandler()), List.of(new CancelCommandInterceptor()));
+    var handler = new TestCommandHandler();
+    CommandBus bus = new InMemoryCommandBus(List.of(handler), List.of(new CancelCommandInterceptor()));
 
-    var cmd = new TestCommand("Hello world");
+    var cmd = new TestCommand(UUID.randomUUID(), "Hello world");
     assertThrowsExactly(RuntimeException.class, () -> bus.invoke(cmd),
         () -> new RuntimeException("Command execution interrupted").getMessage());
+    assertNull(handler.executedCommandId().get());
   }
 
   @Test
   void invokeCommand_interceptorDoesNothing_handlerIsCalled() {
-    CommandBus bus = new InMemoryCommandBus(List.of(new TestCommandHandler()), List.of(new NoOpCommandInterceptor()));
+    var handler = new TestCommandHandler();
+    CommandBus bus = new InMemoryCommandBus(List.of(handler), List.of(new NoOpCommandInterceptor()));
+    var commandId = UUID.randomUUID();
 
-    String result = bus.invoke(new TestCommand("Hello world"));
+    String result = bus.invoke(new TestCommand(commandId, "Hello world"));
 
     assertEquals("Hello world", result);
+    assertEquals(commandId, handler.executedCommandId().get());
   }
 
   private class CancelCommandInterceptor implements Command.Interceptor {
@@ -81,10 +93,12 @@ public class InMemoryCommandBusTest {
     }
   }
 
-  private record TestCommand(String payload) implements Command.Payload {
+  private record TestCommand(UUID id, String payload) implements Command.Payload {
   }
 
   private class TestCommandHandler implements Command.Handler<TestCommand, String> {
+
+    private final AtomicReference<UUID> executedCommandId = new AtomicReference<>();
 
     @Override
     public Class<TestCommand> commandType() {
@@ -93,7 +107,12 @@ public class InMemoryCommandBusTest {
 
     @Override
     public String execute(TestCommand command) {
+      executedCommandId.set(command.id());
       return command.payload();
+    }
+
+    AtomicReference<UUID> executedCommandId() {
+      return executedCommandId;
     }
   }
 }

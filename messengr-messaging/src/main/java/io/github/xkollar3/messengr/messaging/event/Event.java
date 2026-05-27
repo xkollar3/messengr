@@ -1,5 +1,7 @@
 package io.github.xkollar3.messengr.messaging.event;
 
+import java.util.UUID;
+
 public interface Event {
 
   public interface Handler<E extends Payload> {
@@ -11,6 +13,8 @@ public interface Event {
   }
 
   public interface Payload {
+
+    UUID id();
 
   }
 }

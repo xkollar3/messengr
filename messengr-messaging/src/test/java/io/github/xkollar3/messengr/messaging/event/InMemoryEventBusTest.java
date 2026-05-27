@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,18 +28,20 @@ public class InMemoryEventBusTest {
     var latch = new CountDownLatch(1);
     var handler = new TestEventHandler(latch);
     EventBus bus = new InMemoryEventBus(List.of(handler));
+    var eventId = UUID.randomUUID();
 
-    bus.publish(new TestEvent("Hello world"));
+    bus.publish(new TestEvent(eventId, "Hello world"));
 
     assertTrue(await(latch));
     assertEquals("Hello world", handler.handledPayload().get());
+    assertEquals(eventId, handler.handledEventId().get());
   }
 
   @Test
   void publishEvent_noHandler_publishSuccessful() {
     EventBus emptyBus = new InMemoryEventBus(List.of());
 
-    var event = new TestEvent("Hello world");
+    var event = new TestEvent(UUID.randomUUID(), "Hello world");
     assertDoesNotThrow(() -> emptyBus.publish(event));
   }
 
@@ -46,26 +49,38 @@ public class InMemoryEventBusTest {
   void publishEvent_twoHandlersForEvent_bothHandlersCalled() {
     var counter = new AtomicInteger(0);
     var latch = new CountDownLatch(2);
+    var firstHandledEventId = new AtomicReference<UUID>();
+    var secondHandledEventId = new AtomicReference<UUID>();
+    var eventId = UUID.randomUUID();
 
-    EventBus bus = new InMemoryEventBus(List.of(new CountingEventHandler(counter, latch), new CountingEventHandler(counter, latch)));
+    EventBus bus = new InMemoryEventBus(
+        List.of(
+            new CountingEventHandler(counter, latch, firstHandledEventId),
+            new CountingEventHandler(counter, latch, secondHandledEventId)));
 
-    bus.publish(new TestEvent("Hello world"));
+    bus.publish(new TestEvent(eventId, "Hello world"));
 
     assertTrue(await(latch));
     assertEquals(2, counter.get());
+    assertEquals(eventId, firstHandledEventId.get());
+    assertEquals(eventId, secondHandledEventId.get());
   }
 
   @Test
   void publishEvent_oneHandlerThrows_otherHandlerStillCalled() {
     var counter = new AtomicInteger(0);
     var latch = new CountDownLatch(2);
+    var handledEventId = new AtomicReference<UUID>();
+    var eventId = UUID.randomUUID();
 
-    EventBus bus = new InMemoryEventBus(List.of(new ThrowingEventHandler(latch), new CountingEventHandler(counter, latch)));
+    EventBus bus = new InMemoryEventBus(
+        List.of(new ThrowingEventHandler(latch), new CountingEventHandler(counter, latch, handledEventId)));
 
-    assertDoesNotThrow(() -> bus.publish(new TestEvent("Hello world")));
+    assertDoesNotThrow(() -> bus.publish(new TestEvent(eventId, "Hello world")));
 
     assertTrue(await(latch));
     assertEquals(1, counter.get());
+    assertEquals(eventId, handledEventId.get());
   }
 
   @Test
@@ -73,24 +88,30 @@ public class InMemoryEventBusTest {
     var wildcardCounter = new AtomicInteger(0);
     var typedCounter = new AtomicInteger(0);
     var latch = new CountDownLatch(2);
+    var wildcardHandledEventId = new AtomicReference<UUID>();
+    var typedHandledEventId = new AtomicReference<UUID>();
+    var eventId = UUID.randomUUID();
 
     EventBus bus = new InMemoryEventBus(List.of(
-        new WildcardEventHandler(wildcardCounter, latch),
-        new CountingEventHandler(typedCounter, latch)));
+        new WildcardEventHandler(wildcardCounter, latch, wildcardHandledEventId),
+        new CountingEventHandler(typedCounter, latch, typedHandledEventId)));
 
-    bus.publish(new TestEvent("Hello world"));
+    bus.publish(new TestEvent(eventId, "Hello world"));
 
     assertTrue(await(latch));
     assertEquals(1, wildcardCounter.get());
     assertEquals(1, typedCounter.get());
+    assertEquals(eventId, wildcardHandledEventId.get());
+    assertEquals(eventId, typedHandledEventId.get());
   }
 
-  private record TestEvent(String payload) implements Event.Payload {
+  private record TestEvent(UUID id, String payload) implements Event.Payload {
   }
 
   private static class TestEventHandler implements Event.Handler<TestEvent> {
 
     private final AtomicReference<String> handledPayload = new AtomicReference<>();
+    private final AtomicReference<UUID> handledEventId = new AtomicReference<>();
     private final CountDownLatch latch;
 
     private TestEventHandler(CountDownLatch latch) {
@@ -105,11 +126,16 @@ public class InMemoryEventBusTest {
     @Override
     public void handle(TestEvent event) {
       handledPayload.set(event.payload());
+      handledEventId.set(event.id());
       latch.countDown();
     }
 
     AtomicReference<String> handledPayload() {
       return handledPayload;
+    }
+
+    AtomicReference<UUID> handledEventId() {
+      return handledEventId;
     }
   }
 
@@ -117,10 +143,15 @@ public class InMemoryEventBusTest {
 
     private final AtomicInteger counter;
     private final CountDownLatch latch;
+    private final AtomicReference<UUID> handledEventId;
 
-    private CountingEventHandler(AtomicInteger counter, CountDownLatch latch) {
+    private CountingEventHandler(
+        AtomicInteger counter,
+        CountDownLatch latch,
+        AtomicReference<UUID> handledEventId) {
       this.counter = counter;
       this.latch = latch;
+      this.handledEventId = handledEventId;
     }
 
     @Override
@@ -131,6 +162,7 @@ public class InMemoryEventBusTest {
     @Override
     public void handle(TestEvent event) {
       counter.incrementAndGet();
+      handledEventId.set(event.id());
       latch.countDown();
     }
   }
@@ -159,10 +191,15 @@ public class InMemoryEventBusTest {
 
     private final AtomicInteger counter;
     private final CountDownLatch latch;
+    private final AtomicReference<UUID> handledEventId;
 
-    private WildcardEventHandler(AtomicInteger counter, CountDownLatch latch) {
+    private WildcardEventHandler(
+        AtomicInteger counter,
+        CountDownLatch latch,
+        AtomicReference<UUID> handledEventId) {
       this.counter = counter;
       this.latch = latch;
+      this.handledEventId = handledEventId;
     }
 
     @Override
@@ -173,6 +210,7 @@ public class InMemoryEventBusTest {
     @Override
     public void handle(Event.Payload event) {
       counter.incrementAndGet();
+      handledEventId.set(((TestEvent) event).id());
       latch.countDown();
     }
   }

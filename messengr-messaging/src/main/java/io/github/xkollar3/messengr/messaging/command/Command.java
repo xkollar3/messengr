@@ -1,5 +1,7 @@
 package io.github.xkollar3.messengr.messaging.command;
 
+import java.util.UUID;
+
 public interface Command {
 
   public interface Handler<C extends Payload, R> {
@@ -10,6 +12,8 @@ public interface Command {
   }
 
   public interface Payload {
+
+    UUID id();
 
   }
 
